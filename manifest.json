@@ -1,0 +1,10 @@
+{
+  "id": "running-log",
+  "name": "Running Log",
+  "version": "1.0.0",
+  "minAppVersion": "1.4.0",
+  "description": "Import Apple Health workouts and render runner-focused visualizations in your notes.",
+  "author": "Marshall Offutt",
+  "authorUrl": "https://github.com/marshalloffutt",
+  "isDesktopOnly": true
+}
