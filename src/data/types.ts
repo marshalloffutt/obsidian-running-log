@@ -19,6 +19,31 @@ export interface RunIndex {
   runs: RunRecord[];
 }
 
+export interface MileageBucket {
+  periodStart: string; // YYYY-MM-DD (week or month start)
+  distance: number;    // in display unit
+  runCount: number;
+}
+
+export interface PacePoint {
+  date: string;              // YYYY-MM-DD
+  paceSecondsPerUnit: number; // seconds per mi or km; for speed, units/hr
+}
+
+export interface HeatmapDay {
+  date: string;      // YYYY-MM-DD
+  distance: number;  // in display unit
+  runCount: number;
+  intensity: number; // 0..1, bucketed to `levels`
+}
+
+export interface StreakSummary {
+  currentStreak: number;
+  longestStreak: number;
+  unit: "day" | "week";
+  lastRunDate: string | null; // YYYY-MM-DD
+}
+
 export interface RunningLogSettings {
   indexFolder: string;
   exportFileName: string;
