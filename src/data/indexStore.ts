@@ -46,6 +46,10 @@ export class IndexStore {
     }
   }
 
+  hasIndex(): boolean {
+    return this.index !== null;
+  }
+
   getRuns(): RunRecord[] {
     return this.index?.runs ?? [];
   }

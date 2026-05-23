@@ -12,3 +12,14 @@ export class FileSystemAdapter {
 export function normalizePath(p: string): string {
   return p.replace(/\\/g, "/");
 }
+export class MarkdownRenderChild {
+  constructor(public containerEl: HTMLElement) {}
+  onload() {}
+  onunload() {}
+  load() { this.onload(); }
+  unload() { this.onunload(); }
+  registerEvent(_ref: unknown) {}
+}
+export class Component {
+  registerEvent(_ref: unknown) {}
+}
