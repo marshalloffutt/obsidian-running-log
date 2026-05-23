@@ -34,7 +34,7 @@ export function renderBarChart(
 ): Chart {
   const isWeekly = config["type"] === "weekly-mileage";
   const unit = (config["unit"] as "mi" | "km" | undefined) ?? settings.displayUnit;
-  const goal = config["goal"] as number | undefined;
+  const goal = (config["goal"] as number | undefined) ?? settings.defaultGoal;
   const showRunCount = config["showruncount"] as boolean | undefined;
 
   const buckets = isWeekly
