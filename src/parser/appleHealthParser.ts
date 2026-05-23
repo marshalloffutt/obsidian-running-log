@@ -137,6 +137,8 @@ export function parseAppleHealthXml(filePath: string): Promise<RunRecord[]> {
 
     saxStream.on("end", () => resolve(records));
 
-    fs.createReadStream(filePath).pipe(saxStream);
+    const readStream = fs.createReadStream(filePath);
+    readStream.on("error", reject);
+    readStream.pipe(saxStream);
   });
 }

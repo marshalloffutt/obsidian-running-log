@@ -145,5 +145,8 @@ vite.config.ts.timestamp-*
 # Obsidian plugin build output — distributed via GitHub releases, not committed
 main.js
 
+# Personal plugin settings (vault-specific, not for distribution)
+data.json
+
 # macOS
 .DS_Store

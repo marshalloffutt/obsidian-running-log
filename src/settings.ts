@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { RunningLogSettings } from "./data/types";
 
 export const DEFAULT_SETTINGS: RunningLogSettings = {
@@ -14,13 +14,11 @@ type SaveFn = () => Promise<void>;
 export class RunningLogSettingsTab extends PluginSettingTab {
   constructor(
     app: App,
+    plugin: Plugin,
     private settings: RunningLogSettings,
     private save: SaveFn
   ) {
-    // PluginSettingTab requires the plugin instance; we pass null cast as Plugin
-    // because we only need app + containerEl from the parent class at runtime.
-    // The actual plugin reference is passed via the Obsidian framework.
-    super(app, null as never);
+    super(app, plugin);
   }
 
   display(): void {

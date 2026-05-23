@@ -28,7 +28,7 @@ export default class RunningLogPlugin extends Plugin {
     });
 
     this.addSettingTab(
-      new RunningLogSettingsTab(this.app, this.settings, () => this.saveSettings())
+      new RunningLogSettingsTab(this.app, this, this.settings, () => this.saveSettings())
     );
   }
 
@@ -56,17 +56,18 @@ export default class RunningLogPlugin extends Plugin {
     try {
       const records = await parseAppleHealthXml(exportPath);
       const newCount = await this.store.importRuns(records);
-      notice.setMessage(
-        `Running Log: Imported ${records.length} runs (${newCount} new).`
-      );
+      notice.hide();
+      new Notice(`Running Log: Imported ${records.length} runs (${newCount} new).`, 5000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      notice.hide();
       if (msg.includes("ENOENT")) {
-        notice.setMessage(
-          `Running Log: Export not found. Drop ${this.settings.exportFileName} into ${this.settings.indexFolder}/ and try again.`
+        new Notice(
+          `Running Log: Export not found. Drop ${this.settings.exportFileName} into ${this.settings.indexFolder}/ and try again.`,
+          6000
         );
       } else {
-        notice.setMessage(`Running Log: Import failed — ${msg}`);
+        new Notice(`Running Log: Import failed — ${msg}`, 6000);
       }
     }
   }
