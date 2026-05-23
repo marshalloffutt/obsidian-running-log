@@ -1,1 +1,68 @@
 /* Running Log plugin styles */
+
+.running-log-error {
+  padding: 0.5em 0.75em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: var(--text-error, #e05252);
+  border: 1px solid var(--background-modifier-error, #e05252);
+}
+
+.running-log-warning {
+  padding: 0.2em 0;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.running-log-empty {
+  padding: 0.5em 0;
+  font-size: 0.9em;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.running-log-chart-container {
+  position: relative;
+  max-height: 280px;
+}
+
+.running-log-heatmap-container {
+  overflow-x: auto;
+  padding: 0.25em 0;
+}
+
+/* ─── Streak card ─────────────────────────────────────────────────────────── */
+
+.running-log-streak {
+  display: flex;
+  align-items: flex-end;
+  gap: 2.5em;
+  padding: 0.5em 0;
+}
+
+.running-log-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2em;
+}
+
+.running-log-stat-value {
+  font-size: 2.4em;
+  font-weight: 700;
+  color: var(--interactive-accent);
+  line-height: 1;
+}
+
+.running-log-stat-label {
+  font-size: 0.7em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.running-log-last-run {
+  font-size: 0.82em;
+  color: var(--text-faint);
+  padding-bottom: 0.3em;
+}
