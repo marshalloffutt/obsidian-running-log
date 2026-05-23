@@ -4,7 +4,7 @@ import { IndexStore } from "./data/indexStore";
 import { RunningLogSettings } from "./data/types";
 import { parseAppleHealthXml } from "./parser/appleHealthParser";
 import { createCodeBlockProcessor } from "./render/codeBlockProcessor";
-import { DEFAULT_SETTINGS } from "./settings";
+import { DEFAULT_SETTINGS, RunningLogSettingsTab } from "./settings";
 
 export default class RunningLogPlugin extends Plugin {
   settings: RunningLogSettings = { ...DEFAULT_SETTINGS };
@@ -26,9 +26,17 @@ export default class RunningLogPlugin extends Plugin {
       name: "Import Apple Health runs",
       callback: () => void this.runImport(),
     });
+
+    this.addSettingTab(
+      new RunningLogSettingsTab(this.app, this.settings, () => this.saveSettings())
+    );
   }
 
   onunload() {}
+
+  async saveSettings() {
+    await this.saveData(this.settings);
+  }
 
   private async loadSettings() {
     const saved = await this.loadData();
