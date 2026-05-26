@@ -1,4 +1,4 @@
-import { RunRecord, MileageBucket, PacePoint, HeatmapDay, StreakSummary } from "./types";
+import { RunSummary, MileageBucket, PacePoint, HeatmapDay, StreakSummary } from "./types";
 import { metersToUnit } from "../util/units";
 import { paceSecondsPerUnit, speedUnitsPerHour, movingAverage } from "../util/pace";
 import { localDateStr, today, addDays, addMonths, weekStart, monthStart } from "../util/dates";
@@ -6,7 +6,7 @@ import { localDateStr, today, addDays, addMonths, weekStart, monthStart } from "
 // ─── Weekly mileage ──────────────────────────────────────────────────────────
 
 export function byWeek(
-  runs: RunRecord[],
+  runs: RunSummary[],
   opts: {
     unit: "mi" | "km";
     weekStartsOn: "monday" | "sunday";
@@ -22,7 +22,7 @@ export function byWeek(
   const firstBucket = weekStart(fromDate, opts.weekStartsOn);
   const lastBucket = weekStart(toDate, opts.weekStartsOn);
 
-  const runsByBucket = new Map<string, RunRecord[]>();
+  const runsByBucket = new Map<string, RunSummary[]>();
   for (const run of runs) {
     const date = localDateStr(run.startTime);
     if (date < fromDate || date > toDate) continue;
@@ -50,7 +50,7 @@ export function byWeek(
 // ─── Monthly mileage ─────────────────────────────────────────────────────────
 
 export function byMonth(
-  runs: RunRecord[],
+  runs: RunSummary[],
   opts: {
     unit: "mi" | "km";
     last?: number;
@@ -63,7 +63,7 @@ export function byMonth(
   const currentMonth = monthStart(toDate);
   const fromMonth = opts.from ? monthStart(opts.from) : addMonths(currentMonth, -(lastN - 1));
 
-  const runsByMonth = new Map<string, RunRecord[]>();
+  const runsByMonth = new Map<string, RunSummary[]>();
   for (const run of runs) {
     const month = monthStart(localDateStr(run.startTime));
     if (month < fromMonth || month > currentMonth) continue;
@@ -89,7 +89,7 @@ export function byMonth(
 // ─── Pace trend ──────────────────────────────────────────────────────────────
 
 export function paceSeries(
-  runs: RunRecord[],
+  runs: RunSummary[],
   opts: {
     unit: "mi" | "km";
     last?: number; // days
@@ -129,7 +129,7 @@ export function paceSeries(
 // ─── Calendar heatmap ────────────────────────────────────────────────────────
 
 export function heatmapDays(
-  runs: RunRecord[],
+  runs: RunSummary[],
   opts: {
     unit: "mi" | "km";
     year?: number;
@@ -151,7 +151,7 @@ export function heatmapDays(
     fromDate = addDays(toDate, -(opts.last ?? 365) + 1);
   }
 
-  const byDate = new Map<string, RunRecord[]>();
+  const byDate = new Map<string, RunSummary[]>();
   for (const run of runs) {
     const date = localDateStr(run.startTime);
     if (date < fromDate || date > toDate) continue;
@@ -185,7 +185,7 @@ export function heatmapDays(
 // ─── Streak tracker ──────────────────────────────────────────────────────────
 
 export function streaks(
-  runs: RunRecord[],
+  runs: RunSummary[],
   opts: {
     unit: "day" | "week";
     weekStartsOn: "monday" | "sunday";

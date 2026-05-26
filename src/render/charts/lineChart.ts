@@ -11,7 +11,7 @@ import {
 } from "chart.js";
 import { paceSeries } from "../../data/aggregations";
 import { unitToMeters } from "../../util/units";
-import { RunRecord, RunningLogSettings } from "../../data/types";
+import { RunSummary, RunningLogSettings } from "../../data/types";
 import { ThemePalette } from "../theme";
 
 Chart.register(LineController, CategoryScale, LinearScale, LineElement, PointElement, Tooltip);
@@ -40,7 +40,7 @@ function linearRegression(ys: number[]): { slope: number; intercept: number } {
 export function renderLineChart(
   el: HTMLElement,
   config: Record<string, unknown>,
-  runs: RunRecord[],
+  runs: RunSummary[],
   settings: RunningLogSettings,
   palette: ThemePalette
 ): Chart {

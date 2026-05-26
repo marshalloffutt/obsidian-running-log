@@ -3,7 +3,9 @@ import { RunningLogSettings } from "./data/types";
 
 export const DEFAULT_SETTINGS: RunningLogSettings = {
   indexFolder: "running-log",
-  exportFileName: "export.xml",
+  inboxFolder: "running-log/inbox",
+  autoImport: true,
+  routeMaxPoints: 500,
   displayUnit: "mi",
   weekStartsOn: "monday",
   minRunDistance: 0,
@@ -28,7 +30,7 @@ export class RunningLogSettingsTab extends PluginSettingTab {
 
     // ── Import ─────────────────────────────────────────────────────────────
 
-    containerEl.createEl("h3", { text: "Import" });
+    containerEl.createEl("h3", { text: "Inbox" });
 
     new Setting(containerEl)
       .setName("Index folder")
@@ -44,14 +46,14 @@ export class RunningLogSettingsTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Export file name")
-      .setDesc("Name of the Apple Health export file dropped into the index folder.")
+      .setName("Inbox folder")
+      .setDesc("Vault folder to watch for incoming .fit files.")
       .addText((text) =>
         text
-          .setPlaceholder("export.xml")
-          .setValue(this.settings.exportFileName)
+          .setPlaceholder("running-log/inbox")
+          .setValue(this.settings.inboxFolder)
           .onChange(async (value) => {
-            this.settings.exportFileName = value.trim() || DEFAULT_SETTINGS.exportFileName;
+            this.settings.inboxFolder = value.trim() || DEFAULT_SETTINGS.inboxFolder;
             await this.save();
           })
       );

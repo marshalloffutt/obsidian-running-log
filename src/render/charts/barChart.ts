@@ -9,7 +9,7 @@ import {
   type Plugin,
 } from "chart.js";
 import { byWeek, byMonth } from "../../data/aggregations";
-import { RunRecord, RunningLogSettings } from "../../data/types";
+import { RunSummary, RunningLogSettings } from "../../data/types";
 import { ThemePalette } from "../theme";
 
 Chart.register(BarController, CategoryScale, LinearScale, BarElement, Tooltip);
@@ -28,7 +28,7 @@ function fmtMonth(d: string) {
 export function renderBarChart(
   el: HTMLElement,
   config: Record<string, unknown>,
-  runs: RunRecord[],
+  runs: RunSummary[],
   settings: RunningLogSettings,
   palette: ThemePalette
 ): Chart {

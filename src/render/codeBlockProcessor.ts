@@ -58,7 +58,7 @@ class RunningLogBlock extends MarkdownRenderChild {
     if (!this.store.hasIndex()) {
       this.containerEl.createEl("p", {
         cls: "running-log-empty",
-        text: 'No runs imported yet. Run "Running Log: Import Apple Health runs" to get started.',
+        text: 'No runs yet. Drop a .fit file into your inbox folder to get started.',
       });
       return;
     }

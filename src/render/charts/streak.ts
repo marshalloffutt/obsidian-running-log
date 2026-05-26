@@ -1,11 +1,11 @@
 import { streaks } from "../../data/aggregations";
 import { unitToMeters } from "../../util/units";
-import { RunRecord, RunningLogSettings } from "../../data/types";
+import { RunSummary, RunningLogSettings } from "../../data/types";
 
 export function renderStreak(
   el: HTMLElement,
   config: Record<string, unknown>,
-  runs: RunRecord[],
+  runs: RunSummary[],
   settings: RunningLogSettings
 ): void {
   const unitParam = config["unit"] as "day" | "week" | undefined;
