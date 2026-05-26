@@ -10,6 +10,58 @@ export interface RunRecord {
   indoor?: boolean;
 }
 
+// ── v2 types (FIT-based store) ────────────────────────────────────────────
+
+export interface RunSummary {
+  id: string;
+  startTime: string;            // ISO 8601 with offset
+  endTime: string;
+  distanceMeters: number;
+  durationSeconds: number;      // moving time (timer time)
+  elapsedSeconds?: number;      // total elapsed including pauses
+  avgHeartRate?: number;        // bpm
+  maxHeartRate?: number;
+  avgCadence?: number;          // steps/min (raw FIT value)
+  avgPower?: number;            // watts
+  elevationGainMeters?: number;
+  energyKcal?: number;
+  source?: string;
+  indoor?: boolean;
+  hasRoute: boolean;
+  hasSeries: boolean;
+  hasLaps: boolean;
+}
+
+export interface Sample {
+  tOffsetSec: number;
+  heartRate?: number;
+  cadence?: number;
+  power?: number;
+  speedMetersPerSec?: number;
+  altitudeMeters?: number;
+  lat?: number;
+  lon?: number;
+  verticalOscillationMm?: number;
+  groundContactMs?: number;
+  strideLengthMeters?: number;
+}
+
+export interface Lap {
+  index: number;
+  startOffsetSec: number;
+  distanceMeters: number;
+  durationSeconds: number;
+  avgHeartRate?: number;
+  avgCadence?: number;
+}
+
+export interface RunDetail {
+  id: string;
+  samples: Sample[];
+  laps: Lap[];
+  route: [number, number][]; // [lat, lon] in degrees, downsampled
+}
+
 export interface RunIndex {
   schemaVersion: number;
   generatedAt: string;
