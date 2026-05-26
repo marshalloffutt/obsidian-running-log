@@ -1,10 +1,10 @@
 {
   "id": "running-log",
   "name": "Running Log",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "minAppVersion": "1.4.0",
-  "description": "Import Apple Health workouts and render runner-focused visualizations in your notes.",
+  "description": "Automatic FIT file import and runner-focused visualizations — gallery, run detail, mileage, pace, heatmap, and streaks.",
   "author": "Marshall Offutt",
   "authorUrl": "https://github.com/marshalloffutt",
-  "isDesktopOnly": true
+  "isDesktopOnly": false
 }
