@@ -1,9 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { mergeRuns } from "../src/data/indexStore";
-import { RunRecord } from "../src/data/types";
+import { RunSummary } from "../src/data/types";
 
-function rec(id: string, startTime: string, overrides: Partial<RunRecord> = {}): RunRecord {
-  return { id, startTime, endTime: startTime, distanceMeters: 5000, durationSeconds: 1800, ...overrides };
+function rec(id: string, startTime: string, overrides: Partial<RunSummary> = {}): RunSummary {
+  return {
+    id, startTime, endTime: startTime,
+    distanceMeters: 5000, durationSeconds: 1800,
+    hasRoute: false, hasSeries: false, hasLaps: false,
+    ...overrides,
+  };
 }
 
 describe("mergeRuns", () => {
@@ -44,7 +49,7 @@ describe("mergeRuns", () => {
   });
 
   it("preserves all fields of each record", () => {
-    const r = rec("a", "2026-01-01", { source: "Apple Watch", energyKcal: 350, indoor: false });
+    const r = rec("a", "2026-01-01", { source: "fit", energyKcal: 350, indoor: false });
     const { runs } = mergeRuns([], [r]);
     expect(runs[0]).toEqual(r);
   });

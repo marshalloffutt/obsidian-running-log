@@ -5,7 +5,9 @@ export type BlockType =
   | "monthly-mileage"
   | "pace-trend"
   | "heatmap"
-  | "streak";
+  | "streak"
+  | "gallery"
+  | "run-detail";
 
 export const VALID_TYPES: BlockType[] = [
   "weekly-mileage",
@@ -13,6 +15,8 @@ export const VALID_TYPES: BlockType[] = [
   "pace-trend",
   "heatmap",
   "streak",
+  "gallery",
+  "run-detail",
 ];
 
 const KNOWN_KEYS: Record<BlockType, ReadonlySet<string>> = {
@@ -21,6 +25,8 @@ const KNOWN_KEYS: Record<BlockType, ReadonlySet<string>> = {
   "pace-trend":      new Set(["type","title","unit","from","to","last","metric","smoothing","mindistance","trendline"]),
   "heatmap":         new Set(["type","title","unit","year","last","metric","levels"]),
   "streak":          new Set(["type","title","unit","min","showlongest"]),
+  "gallery":         new Set(["type","title","unit","from","to","last","sort","metric","columns"]),
+  "run-detail":      new Set(["type","title","unit","date","nth","id","latest","panels","smoothing"]),
 };
 
 export function parseBlockSource(source: string): {

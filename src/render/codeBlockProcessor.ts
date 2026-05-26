@@ -1,6 +1,7 @@
 import { App, MarkdownPostProcessorContext, MarkdownRenderChild } from "obsidian";
 import type { Chart } from "chart.js";
 import { IndexStore } from "../data/indexStore";
+import { DetailStore } from "../data/detailStore";
 import { RunningLogSettings } from "../data/types";
 import { parseBlockSource, VALID_TYPES, BlockType } from "./blockConfig";
 import { getThemePalette } from "./theme";
@@ -8,15 +9,18 @@ import { renderBarChart } from "./charts/barChart";
 import { renderLineChart } from "./charts/lineChart";
 import { renderHeatmap } from "./charts/heatmap";
 import { renderStreak } from "./charts/streak";
+import { renderGallery } from "./views/gallery";
+import { renderRunDetail } from "./views/runDetail";
 
 class RunningLogBlock extends MarkdownRenderChild {
-  private chart: Chart | null = null;
+  private charts: Chart[] = [];
 
   constructor(
     private app: App,
     containerEl: HTMLElement,
     private source: string,
     private store: IndexStore,
+    private detailStore: DetailStore,
     private settings: RunningLogSettings
   ) {
     super(containerEl);
@@ -30,13 +34,13 @@ class RunningLogBlock extends MarkdownRenderChild {
   }
 
   onunload() {
-    this.chart?.destroy();
-    this.chart = null;
+    for (const c of this.charts) c.destroy();
+    this.charts = [];
   }
 
   private render() {
-    this.chart?.destroy();
-    this.chart = null;
+    for (const c of this.charts) c.destroy();
+    this.charts = [];
     this.containerEl.empty();
 
     const { config, warnings } = parseBlockSource(this.source);
@@ -58,7 +62,7 @@ class RunningLogBlock extends MarkdownRenderChild {
     if (!this.store.hasIndex()) {
       this.containerEl.createEl("p", {
         cls: "running-log-empty",
-        text: 'No runs imported yet. Run "Running Log: Import Apple Health runs" to get started.',
+        text: 'No runs yet. Drop a .fit file into your inbox folder to get started.',
       });
       return;
     }
@@ -77,12 +81,28 @@ class RunningLogBlock extends MarkdownRenderChild {
     }
 
     if (type === "weekly-mileage" || type === "monthly-mileage") {
-      this.chart = renderBarChart(this.containerEl, config, runs, this.settings, palette);
+      const chart = renderBarChart(this.containerEl, config, runs, this.settings, palette);
+      if (chart) this.charts.push(chart);
       return;
     }
 
     if (type === "pace-trend") {
-      this.chart = renderLineChart(this.containerEl, config, runs, this.settings, palette);
+      const chart = renderLineChart(this.containerEl, config, runs, this.settings, palette);
+      if (chart) this.charts.push(chart);
+      return;
+    }
+
+    if (type === "gallery") {
+      renderGallery(this.containerEl, config, runs, this.settings, palette);
+      return;
+    }
+
+    if (type === "run-detail") {
+      void renderRunDetail(
+        this.containerEl, config, runs, this.detailStore, this.settings, palette
+      ).then((charts) => {
+        this.charts.push(...charts);
+      });
       return;
     }
   }
@@ -91,9 +111,10 @@ class RunningLogBlock extends MarkdownRenderChild {
 export function createCodeBlockProcessor(
   app: App,
   store: IndexStore,
+  detailStore: DetailStore,
   settings: RunningLogSettings
 ) {
   return (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
-    ctx.addChild(new RunningLogBlock(app, el, source, store, settings));
+    ctx.addChild(new RunningLogBlock(app, el, source, store, detailStore, settings));
   };
 }

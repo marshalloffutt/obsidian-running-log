@@ -1,5 +1,5 @@
 import { heatmapDays } from "../../data/aggregations";
-import { RunRecord, RunningLogSettings } from "../../data/types";
+import { RunSummary, RunningLogSettings } from "../../data/types";
 import { ThemePalette } from "../theme";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -25,7 +25,7 @@ function dayOfWeekOffset(dateStr: string, weekStartsOn: "monday" | "sunday"): nu
 export function renderHeatmap(
   el: HTMLElement,
   config: Record<string, unknown>,
-  runs: RunRecord[],
+  runs: RunSummary[],
   settings: RunningLogSettings,
   palette: ThemePalette
 ): void {

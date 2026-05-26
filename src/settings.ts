@@ -3,7 +3,9 @@ import { RunningLogSettings } from "./data/types";
 
 export const DEFAULT_SETTINGS: RunningLogSettings = {
   indexFolder: "running-log",
-  exportFileName: "export.xml",
+  inboxFolder: "running-log/inbox",
+  autoImport: true,
+  routeMaxPoints: 500,
   displayUnit: "mi",
   weekStartsOn: "monday",
   minRunDistance: 0,
@@ -26,13 +28,13 @@ export class RunningLogSettingsTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.createEl("h2", { text: "Running Log" });
 
-    // ── Import ─────────────────────────────────────────────────────────────
+    // ── Inbox ──────────────────────────────────────────────────────────────
 
-    containerEl.createEl("h3", { text: "Import" });
+    containerEl.createEl("h3", { text: "Inbox" });
 
     new Setting(containerEl)
       .setName("Index folder")
-      .setDesc("Vault folder where runs.json is stored and export.xml is expected. Takes effect on next import.")
+      .setDesc("Vault folder where index.json and run detail files are stored.")
       .addText((text) =>
         text
           .setPlaceholder("running-log")
@@ -44,14 +46,26 @@ export class RunningLogSettingsTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Export file name")
-      .setDesc("Name of the Apple Health export file dropped into the index folder.")
+      .setName("Inbox folder")
+      .setDesc("Vault folder to watch for incoming .fit files. Processed files move to inbox/processed/.")
       .addText((text) =>
         text
-          .setPlaceholder("export.xml")
-          .setValue(this.settings.exportFileName)
+          .setPlaceholder("running-log/inbox")
+          .setValue(this.settings.inboxFolder)
           .onChange(async (value) => {
-            this.settings.exportFileName = value.trim() || DEFAULT_SETTINGS.exportFileName;
+            this.settings.inboxFolder = value.trim() || DEFAULT_SETTINGS.inboxFolder;
+            await this.save();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Auto-import")
+      .setDesc("Automatically import .fit files when they appear in the inbox folder.")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.settings.autoImport)
+          .onChange(async (value) => {
+            this.settings.autoImport = value;
             await this.save();
           })
       );
@@ -107,7 +121,7 @@ export class RunningLogSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Minimum run distance (meters)")
-      .setDesc("Runs shorter than this are ignored. Use 400 to filter phantom workouts recorded by Apple Health.")
+      .setDesc("Runs shorter than this are ignored. Useful to filter short walks or accidental recordings.")
       .addText((text) => {
         text
           .setPlaceholder("0")
@@ -117,6 +131,28 @@ export class RunningLogSettingsTab extends PluginSettingTab {
         text.onChange(async (value) => {
           const n = parseFloat(value);
           this.settings.minRunDistance = isNaN(n) ? 0 : Math.max(0, n);
+          await this.save();
+        });
+        return text;
+      });
+
+    // ── Advanced ───────────────────────────────────────────────────────────
+
+    containerEl.createEl("h3", { text: "Advanced" });
+
+    new Setting(containerEl)
+      .setName("Route max points")
+      .setDesc("Maximum GPS points stored per run for route maps. Lower values reduce file size.")
+      .addText((text) => {
+        text
+          .setPlaceholder("500")
+          .setValue(String(this.settings.routeMaxPoints));
+        text.inputEl.type = "number";
+        text.inputEl.min = "50";
+        text.inputEl.max = "2000";
+        text.onChange(async (value) => {
+          const n = parseInt(value, 10);
+          this.settings.routeMaxPoints = isNaN(n) ? DEFAULT_SETTINGS.routeMaxPoints : Math.max(50, Math.min(2000, n));
           await this.save();
         });
         return text;

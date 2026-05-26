@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { RunRecord } from "../src/data/types";
+import { RunSummary } from "../src/data/types";
 import { byWeek, byMonth, paceSeries, heatmapDays, streaks } from "../src/data/aggregations";
 
 // Fixed reference date: Sunday 2026-03-15
@@ -17,8 +17,8 @@ function run(
   startDate: string,
   distanceMeters: number,
   durationSeconds = 1800,
-  overrides: Partial<RunRecord> = {}
-): RunRecord {
+  overrides: Partial<RunSummary> = {}
+): RunSummary {
   const iso = `${startDate}T07:00:00-07:00`;
   return {
     id: `${startDate}-${distanceMeters}`,
@@ -26,6 +26,9 @@ function run(
     endTime: iso,
     distanceMeters,
     durationSeconds,
+    hasRoute: false,
+    hasSeries: false,
+    hasLaps: false,
     ...overrides,
   };
 }

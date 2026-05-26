@@ -98,7 +98,9 @@ export interface StreakSummary {
 
 export interface RunningLogSettings {
   indexFolder: string;
-  exportFileName: string;
+  inboxFolder: string;
+  autoImport: boolean;
+  routeMaxPoints: number;
   displayUnit: "mi" | "km";
   weekStartsOn: "monday" | "sunday";
   defaultGoal?: number;
