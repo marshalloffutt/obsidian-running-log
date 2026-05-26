@@ -9907,14 +9907,18 @@ var VALID_TYPES = [
   "monthly-mileage",
   "pace-trend",
   "heatmap",
-  "streak"
+  "streak",
+  "gallery",
+  "run-detail"
 ];
 var KNOWN_KEYS = {
   "weekly-mileage": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "last", "goal", "showruncount"]),
   "monthly-mileage": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "last", "goal", "showruncount"]),
   "pace-trend": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "last", "metric", "smoothing", "mindistance", "trendline"]),
   "heatmap": /* @__PURE__ */ new Set(["type", "title", "unit", "year", "last", "metric", "levels"]),
-  "streak": /* @__PURE__ */ new Set(["type", "title", "unit", "min", "showlongest"])
+  "streak": /* @__PURE__ */ new Set(["type", "title", "unit", "min", "showlongest"]),
+  "gallery": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "last", "sort", "metric", "columns"]),
+  "run-detail": /* @__PURE__ */ new Set(["type", "title", "unit", "date", "nth", "id", "latest", "panels", "smoothing"])
 };
 function parseBlockSource(source) {
   const config = {};
@@ -21614,6 +21618,14 @@ function metersToUnit(meters, unit) {
 function unitToMeters(value, unit) {
   return unit === "mi" ? value * METERS_PER_MILE : value * METERS_PER_KM;
 }
+function secondsToHMS(totalSeconds) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor(totalSeconds % 3600 / 60);
+  const s = Math.floor(totalSeconds % 60);
+  if (h > 0)
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 
 // src/util/pace.ts
 function paceSecondsPerUnit(distanceMeters, durationSeconds, unit) {
@@ -22169,15 +22181,497 @@ function renderStreak(el, config, runs, settings) {
   }
 }
 
+// src/render/views/gallery.ts
+var MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function formatCardDate(isoWithOffset) {
+  const [y, m, d] = localDateStr(isoWithOffset).split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getUTCDay()];
+  return `${dow} ${MONTH_NAMES[m - 1]} ${d}, ${y}`;
+}
+function formatPace(distanceMeters, durationSeconds, unit) {
+  const dist = metersToUnit(distanceMeters, unit);
+  if (dist <= 0)
+    return "\u2014";
+  const spu = durationSeconds / dist;
+  const m = Math.floor(spu / 60);
+  const s = String(Math.floor(spu % 60)).padStart(2, "0");
+  return `${m}:${s} /${unit}`;
+}
+function accentIntensity(run, metric, allRuns, unit) {
+  var _a;
+  const metersPerUnit = unit === "mi" ? METERS_PER_MILE : METERS_PER_KM;
+  const extractors = {
+    pace: (r) => r.distanceMeters > 0 ? r.durationSeconds / (r.distanceMeters / metersPerUnit) : void 0,
+    distance: (r) => r.distanceMeters,
+    hr: (r) => r.avgHeartRate
+  };
+  const extract = (_a = extractors[metric]) != null ? _a : extractors.pace;
+  const values = allRuns.map(extract).filter((v) => v !== void 0);
+  if (values.length === 0)
+    return 0.5;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (max === min)
+    return 0.5;
+  const val = extract(run);
+  if (val === void 0)
+    return 0.3;
+  const normalized = (val - min) / (max - min);
+  return metric === "pace" ? 1 - normalized : normalized;
+}
+function renderGallery(container, config, allRuns, settings, palette) {
+  var _a, _b, _c;
+  const unit = (_a = config["unit"]) != null ? _a : settings.displayUnit;
+  const last = typeof config["last"] === "number" ? config["last"] : 30;
+  const sort = (_b = config["sort"]) != null ? _b : "date";
+  const metric = (_c = config["metric"]) != null ? _c : "pace";
+  const columns = typeof config["columns"] === "number" ? config["columns"] : void 0;
+  const fromDate = config["from"];
+  const toDate = config["to"];
+  let runs = [...allRuns];
+  if (fromDate || toDate) {
+    runs = runs.filter((r) => {
+      const d = localDateStr(r.startTime);
+      return (!fromDate || d >= fromDate) && (!toDate || d <= toDate);
+    });
+  } else {
+    runs = runs.slice(-last);
+  }
+  const metersPerUnit = unit === "mi" ? METERS_PER_MILE : METERS_PER_KM;
+  runs.sort((a, b) => {
+    if (sort === "distance")
+      return b.distanceMeters - a.distanceMeters;
+    if (sort === "duration")
+      return b.durationSeconds - a.durationSeconds;
+    if (sort === "pace") {
+      const pa = a.distanceMeters > 0 ? a.durationSeconds / (a.distanceMeters / metersPerUnit) : Infinity;
+      const pb = b.distanceMeters > 0 ? b.durationSeconds / (b.distanceMeters / metersPerUnit) : Infinity;
+      return pa - pb;
+    }
+    return b.startTime.localeCompare(a.startTime);
+  });
+  if (runs.length === 0) {
+    container.createEl("p", { cls: "running-log-empty", text: "No runs in this range." });
+    return;
+  }
+  const title = config["title"];
+  if (title !== "") {
+    const heading = title != null ? title : `Last ${runs.length} runs`;
+    container.createEl("h4", { cls: "running-log-gallery-title", text: heading });
+  }
+  const grid = container.createEl("div", { cls: "running-log-gallery" });
+  if (columns) {
+    grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+  }
+  for (const run of runs) {
+    const card = grid.createEl("div", { cls: "running-log-card" });
+    card.createEl("div", {
+      cls: "running-log-card-date",
+      text: formatCardDate(run.startTime)
+    });
+    const stats = card.createEl("div", { cls: "running-log-card-stats" });
+    const dist = metersToUnit(run.distanceMeters, unit);
+    stats.createEl("span", {
+      cls: "running-log-card-primary",
+      text: `${dist.toFixed(2)} ${unit}`
+    });
+    stats.createEl("span", {
+      cls: "running-log-card-secondary",
+      text: secondsToHMS(run.durationSeconds)
+    });
+    stats.createEl("span", {
+      cls: "running-log-card-secondary",
+      text: formatPace(run.distanceMeters, run.durationSeconds, unit)
+    });
+    if (run.avgHeartRate) {
+      stats.createEl("span", {
+        cls: "running-log-card-meta",
+        text: `${run.avgHeartRate} bpm`
+      });
+    }
+    const intensity = accentIntensity(run, metric, runs, unit);
+    const bar = card.createEl("div", { cls: "running-log-card-bar" });
+    bar.style.setProperty("--bar-intensity", String(intensity));
+    bar.style.background = palette.accent;
+    bar.style.opacity = String(0.25 + intensity * 0.75);
+  }
+}
+
+// src/render/views/routeMap.ts
+var NS2 = "http://www.w3.org/2000/svg";
+function svgEl2(tag, attrs) {
+  const el = document.createElementNS(NS2, tag);
+  for (const [k, v] of Object.entries(attrs))
+    el.setAttribute(k, v);
+  return el;
+}
+function renderRouteMap(container, route, palette, widthPx = 400, heightPx = 250) {
+  if (route.length < 2) {
+    container.createEl("p", { cls: "running-log-empty", text: "No GPS data for this run." });
+    return;
+  }
+  const lats = route.map(([lat]) => lat);
+  const lons = route.map(([, lon]) => lon);
+  const latMin = Math.min(...lats);
+  const latMax = Math.max(...lats);
+  const lonMin = Math.min(...lons);
+  const lonMax = Math.max(...lons);
+  const latCenter = (latMin + latMax) / 2;
+  const cosLat = Math.cos(latCenter * Math.PI / 180);
+  const projLon = (lon) => lon * cosLat;
+  const projLons = lons.map(projLon);
+  const projLonMin = Math.min(...projLons);
+  const projLonMax = Math.max(...projLons);
+  const latRange = latMax - latMin || 1e-6;
+  const lonRange = projLonMax - projLonMin || 1e-6;
+  const pad = 16;
+  const W = widthPx - pad * 2;
+  const H = heightPx - pad * 2;
+  const scale = Math.min(W / lonRange, H / latRange);
+  function project([lat, lon]) {
+    const x = (projLon(lon) - projLonMin) * scale + pad;
+    const y = (latMax - lat) * scale + pad;
+    return [x, y];
+  }
+  const points = route.map(project);
+  const pointsStr = points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const svgW = (lonRange * scale + pad * 2).toFixed(1);
+  const svgH = (latRange * scale + pad * 2).toFixed(1);
+  const svg = svgEl2("svg", {
+    viewBox: `0 0 ${svgW} ${svgH}`,
+    class: "running-log-route-svg",
+    "aria-label": "Route map"
+  });
+  svg.appendChild(svgEl2("polyline", {
+    points: pointsStr,
+    fill: "none",
+    stroke: palette.accent,
+    "stroke-width": "2.5",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round"
+  }));
+  const [sx, sy] = points[0];
+  const startCircle = svgEl2("circle", {
+    cx: String(sx.toFixed(1)),
+    cy: String(sy.toFixed(1)),
+    r: "4",
+    fill: "#22c55e",
+    stroke: "white",
+    "stroke-width": "1"
+  });
+  svg.appendChild(startCircle);
+  const [ex, ey] = points[points.length - 1];
+  const endCircle = svgEl2("circle", {
+    cx: String(ex.toFixed(1)),
+    cy: String(ey.toFixed(1)),
+    r: "4",
+    fill: palette.accent,
+    stroke: "white",
+    "stroke-width": "1"
+  });
+  svg.appendChild(endCircle);
+  const wrap = container.createEl("div", { cls: "running-log-route" });
+  wrap.appendChild(svg);
+}
+
+// src/render/views/runDetail.ts
+Chart.register(LineController, CategoryScale, LinearScale, LineElement, PointElement, plugin_tooltip);
+var MONTH_NAMES2 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function formatDetailDate(isoWithOffset) {
+  const [y, m, d] = localDateStr(isoWithOffset).split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dow = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][date.getUTCDay()];
+  return `${dow}, ${MONTH_NAMES2[m - 1]} ${d}, ${y}`;
+}
+function fmtPace2(secPerUnit) {
+  const m = Math.floor(secPerUnit / 60);
+  const s = String(Math.floor(secPerUnit % 60)).padStart(2, "0");
+  return `${m}:${s}`;
+}
+function fmtTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = String(Math.floor(sec % 60)).padStart(2, "0");
+  return `${m}:${s}`;
+}
+function findRun(config, runs) {
+  var _a, _b;
+  if (runs.length === 0)
+    return null;
+  if (typeof config["id"] === "string") {
+    return (_a = runs.find((r) => r.id === config["id"])) != null ? _a : null;
+  }
+  if (typeof config["date"] === "string") {
+    const target = config["date"];
+    const nth = typeof config["nth"] === "number" ? config["nth"] : 1;
+    const matching = runs.filter((r) => localDateStr(r.startTime) === target);
+    return (_b = matching[nth - 1]) != null ? _b : null;
+  }
+  return runs[runs.length - 1];
+}
+function renderSummaryPanel(container, summary, unit) {
+  const metersPerUnit = unit === "mi" ? METERS_PER_MILE : METERS_PER_KM;
+  const dist = metersToUnit(summary.distanceMeters, unit);
+  const pace = summary.distanceMeters > 0 ? summary.durationSeconds / (summary.distanceMeters / metersPerUnit) : 0;
+  const stats = [
+    { label: "Distance", value: `${dist.toFixed(2)} ${unit}` },
+    { label: "Time", value: secondsToHMS(summary.durationSeconds) },
+    { label: "Avg Pace", value: `${fmtPace2(pace)} /${unit}` }
+  ];
+  if (summary.avgHeartRate)
+    stats.push({ label: "Avg HR", value: `${summary.avgHeartRate} bpm` });
+  if (summary.maxHeartRate)
+    stats.push({ label: "Max HR", value: `${summary.maxHeartRate} bpm` });
+  if (summary.avgCadence)
+    stats.push({ label: "Cadence", value: `${summary.avgCadence} spm` });
+  if (summary.elevationGainMeters)
+    stats.push({ label: "Elevation", value: `+${Math.round(summary.elevationGainMeters)} m` });
+  if (summary.energyKcal)
+    stats.push({ label: "Calories", value: `${summary.energyKcal} kcal` });
+  if (summary.avgPower)
+    stats.push({ label: "Avg Power", value: `${summary.avgPower} W` });
+  const row = container.createEl("div", { cls: "running-log-stat-row" });
+  for (const { label, value } of stats) {
+    const cell = row.createEl("div", { cls: "running-log-stat" });
+    cell.createEl("div", { cls: "running-log-stat-value", text: value });
+    cell.createEl("div", { cls: "running-log-stat-label", text: label });
+  }
+}
+function renderSplitsPanel(container, laps, unit, palette) {
+  if (laps.length === 0) {
+    container.createEl("p", { cls: "running-log-empty", text: "No splits available." });
+    return;
+  }
+  const metersPerUnit = unit === "mi" ? METERS_PER_MILE : METERS_PER_KM;
+  const table = container.createEl("table", { cls: "running-log-splits" });
+  const thead = table.createEl("thead");
+  const headerRow = thead.createEl("tr");
+  for (const h of ["Lap", `Dist (${unit})`, "Time", `Pace /${unit}`, "HR"]) {
+    headerRow.createEl("th", { text: h });
+  }
+  const tbody = table.createEl("tbody");
+  for (const lap of laps) {
+    const tr = tbody.createEl("tr");
+    const pace = lap.distanceMeters > 0 ? lap.durationSeconds / (lap.distanceMeters / metersPerUnit) : 0;
+    tr.createEl("td", { text: String(lap.index + 1) });
+    tr.createEl("td", { text: metersToUnit(lap.distanceMeters, unit).toFixed(2) });
+    tr.createEl("td", { text: fmtTime(lap.durationSeconds) });
+    tr.createEl("td", { text: fmtPace2(pace) });
+    tr.createEl("td", { text: lap.avgHeartRate ? `${lap.avgHeartRate}` : "\u2014" });
+  }
+}
+function makeSeriesChart(canvas, samples, extract, yLabel, formatY, palette, smoothingWindow, reverseY = false) {
+  const filtered = samples.map((s) => ({ x: s.tOffsetSec, y: extract(s) })).filter((p) => p.y !== void 0);
+  const xs = filtered.map((p) => p.x);
+  const ys = smoothingWindow > 1 ? movingAverage(filtered.map((p) => p.y), smoothingWindow) : filtered.map((p) => p.y);
+  const labels = xs.map(fmtTime);
+  const cfg = {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        data: ys,
+        borderColor: palette.accent,
+        borderWidth: 1.5,
+        pointRadius: 0,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              var _a;
+              return `${yLabel}: ${formatY((_a = ctx.parsed.y) != null ? _a : 0)}`;
+            },
+            title: (items) => `Time: ${items[0].label}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: palette.textMuted,
+            maxTicksLimit: 8,
+            maxRotation: 0
+          },
+          grid: { color: palette.border }
+        },
+        y: {
+          reverse: reverseY,
+          ticks: {
+            color: palette.textMuted,
+            callback: (v) => formatY(v)
+          },
+          grid: { color: palette.border }
+        }
+      }
+    }
+  };
+  return new Chart(canvas, cfg);
+}
+var PANEL_RENDERERS = {
+  pace: {
+    hasSamples: (s) => s.some((p) => p.speedMetersPerSec !== void 0),
+    render(container, detail, palette, smoothing, unit) {
+      const metersPerUnit = unit === "mi" ? METERS_PER_MILE : METERS_PER_KM;
+      const canvas = container.createEl("canvas");
+      return makeSeriesChart(
+        canvas,
+        detail.samples,
+        (s) => s.speedMetersPerSec && s.speedMetersPerSec > 0 ? metersPerUnit / s.speedMetersPerSec : void 0,
+        "Pace",
+        fmtPace2,
+        palette,
+        smoothing,
+        true
+      );
+    }
+  },
+  hr: {
+    hasSamples: (s) => s.some((p) => p.heartRate !== void 0),
+    render(container, detail, palette, smoothing) {
+      const canvas = container.createEl("canvas");
+      return makeSeriesChart(canvas, detail.samples, (s) => s.heartRate, "HR", (v) => `${Math.round(v)} bpm`, palette, smoothing);
+    }
+  },
+  cadence: {
+    hasSamples: (s) => s.some((p) => p.cadence !== void 0),
+    render(container, detail, palette, smoothing) {
+      const canvas = container.createEl("canvas");
+      return makeSeriesChart(canvas, detail.samples, (s) => s.cadence, "Cadence", (v) => `${Math.round(v)} spm`, palette, smoothing);
+    }
+  },
+  power: {
+    hasSamples: (s) => s.some((p) => p.power !== void 0),
+    render(container, detail, palette, smoothing) {
+      const canvas = container.createEl("canvas");
+      return makeSeriesChart(canvas, detail.samples, (s) => s.power, "Power", (v) => `${Math.round(v)} W`, palette, smoothing);
+    }
+  },
+  elevation: {
+    hasSamples: (s) => s.some((p) => p.altitudeMeters !== void 0),
+    render(container, detail, palette, smoothing) {
+      const canvas = container.createEl("canvas");
+      return makeSeriesChart(canvas, detail.samples, (s) => s.altitudeMeters, "Elevation", (v) => `${Math.round(v)} m`, palette, smoothing);
+    }
+  }
+};
+async function renderRunDetail(container, config, runs, detailStore, settings, palette) {
+  var _a, _b;
+  const charts = [];
+  const summary = findRun(config, runs);
+  if (!summary) {
+    container.createEl("p", {
+      cls: "running-log-empty",
+      text: "No run found. Use date: YYYY-MM-DD, id:, or latest: true."
+    });
+    return charts;
+  }
+  const unit = (_a = config["unit"]) != null ? _a : settings.displayUnit;
+  const smoothing = typeof config["smoothing"] === "number" ? config["smoothing"] : 0;
+  const panelsRaw = (_b = config["panels"]) != null ? _b : "summary, splits, pace, hr, route";
+  const panels = panelsRaw.split(",").map((p) => p.trim().toLowerCase());
+  const title = config["title"];
+  if (title !== "") {
+    container.createEl("h4", {
+      cls: "running-log-detail-title",
+      text: title != null ? title : formatDetailDate(summary.startTime)
+    });
+  }
+  const wrap = container.createEl("div", { cls: "running-log-detail" });
+  for (const panel of panels) {
+    if (panel === "summary") {
+      const sec = wrap.createEl("div", { cls: "running-log-detail-section" });
+      renderSummaryPanel(sec, summary, unit);
+      continue;
+    }
+    if (panel === "splits") {
+      break;
+    }
+    if (panel === "route") {
+      break;
+    }
+    if (PANEL_RENDERERS[panel]) {
+      break;
+    }
+  }
+  const needsDetail = panels.some(
+    (p) => p === "splits" || p === "route" || PANEL_RENDERERS[p]
+  );
+  wrap.empty();
+  let detail = null;
+  if (needsDetail) {
+    detail = await detailStore.read(summary.id);
+  }
+  for (const panel of panels) {
+    if (panel === "summary") {
+      const sec = wrap.createEl("div", { cls: "running-log-detail-section" });
+      renderSummaryPanel(sec, summary, unit);
+      continue;
+    }
+    if (panel === "splits") {
+      const sec = wrap.createEl("div", { cls: "running-log-detail-section" });
+      sec.createEl("h5", { cls: "running-log-detail-section-title", text: "Splits" });
+      if (!detail) {
+        sec.createEl("p", { cls: "running-log-empty", text: "Detail file not found." });
+      } else {
+        renderSplitsPanel(sec, detail.laps, unit, palette);
+      }
+      continue;
+    }
+    if (panel === "route") {
+      const sec = wrap.createEl("div", { cls: "running-log-detail-section" });
+      sec.createEl("h5", { cls: "running-log-detail-section-title", text: "Route" });
+      if (!detail || detail.route.length < 2) {
+        sec.createEl("p", { cls: "running-log-empty", text: "No GPS route for this run." });
+      } else {
+        renderRouteMap(sec, detail.route, palette);
+      }
+      continue;
+    }
+    const renderer = PANEL_RENDERERS[panel];
+    if (renderer) {
+      if (!detail || !renderer.hasSamples(detail.samples)) {
+        const sec2 = wrap.createEl("div", { cls: "running-log-detail-section" });
+        sec2.createEl("p", {
+          cls: "running-log-empty",
+          text: `No ${panel} data for this run.`
+        });
+        continue;
+      }
+      const sec = wrap.createEl("div", {
+        cls: "running-log-detail-section running-log-detail-chart"
+      });
+      sec.createEl("h5", { cls: "running-log-detail-section-title", text: panel.charAt(0).toUpperCase() + panel.slice(1) });
+      const chart = renderer.render(sec, detail, palette, smoothing, unit);
+      if (chart)
+        charts.push(chart);
+      continue;
+    }
+    wrap.createEl("p", {
+      cls: "running-log-empty",
+      text: `Unknown panel: "${panel}".`
+    });
+  }
+  return charts;
+}
+
 // src/render/codeBlockProcessor.ts
 var RunningLogBlock = class extends import_obsidian4.MarkdownRenderChild {
-  constructor(app, containerEl, source, store, settings) {
+  constructor(app, containerEl, source, store, detailStore, settings) {
     super(containerEl);
     this.app = app;
     this.source = source;
     this.store = store;
+    this.detailStore = detailStore;
     this.settings = settings;
-    this.chart = null;
+    this.charts = [];
   }
   onload() {
     this.render();
@@ -22186,14 +22680,14 @@ var RunningLogBlock = class extends import_obsidian4.MarkdownRenderChild {
     );
   }
   onunload() {
-    var _a;
-    (_a = this.chart) == null ? void 0 : _a.destroy();
-    this.chart = null;
+    for (const c of this.charts)
+      c.destroy();
+    this.charts = [];
   }
   render() {
-    var _a;
-    (_a = this.chart) == null ? void 0 : _a.destroy();
-    this.chart = null;
+    for (const c of this.charts)
+      c.destroy();
+    this.charts = [];
     this.containerEl.empty();
     const { config, warnings } = parseBlockSource(this.source);
     for (const w of warnings) {
@@ -22225,18 +22719,39 @@ var RunningLogBlock = class extends import_obsidian4.MarkdownRenderChild {
       return;
     }
     if (type === "weekly-mileage" || type === "monthly-mileage") {
-      this.chart = renderBarChart(this.containerEl, config, runs, this.settings, palette);
+      const chart = renderBarChart(this.containerEl, config, runs, this.settings, palette);
+      if (chart)
+        this.charts.push(chart);
       return;
     }
     if (type === "pace-trend") {
-      this.chart = renderLineChart(this.containerEl, config, runs, this.settings, palette);
+      const chart = renderLineChart(this.containerEl, config, runs, this.settings, palette);
+      if (chart)
+        this.charts.push(chart);
+      return;
+    }
+    if (type === "gallery") {
+      renderGallery(this.containerEl, config, runs, this.settings, palette);
+      return;
+    }
+    if (type === "run-detail") {
+      void renderRunDetail(
+        this.containerEl,
+        config,
+        runs,
+        this.detailStore,
+        this.settings,
+        palette
+      ).then((charts) => {
+        this.charts.push(...charts);
+      });
       return;
     }
   }
 };
-function createCodeBlockProcessor(app, store, settings) {
+function createCodeBlockProcessor(app, store, detailStore, settings) {
   return (source, el, ctx) => {
-    ctx.addChild(new RunningLogBlock(app, el, source, store, settings));
+    ctx.addChild(new RunningLogBlock(app, el, source, store, detailStore, settings));
   };
 }
 
@@ -22337,7 +22852,7 @@ var RunningLogPlugin = class extends import_obsidian6.Plugin {
     }
     this.registerMarkdownCodeBlockProcessor(
       "running-log",
-      createCodeBlockProcessor(this.app, this.store, this.settings)
+      createCodeBlockProcessor(this.app, this.store, this.detailStore, this.settings)
     );
     this.addSettingTab(
       new RunningLogSettingsTab(this.app, this, this.settings, () => this.saveSettings())

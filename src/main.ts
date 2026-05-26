@@ -36,7 +36,7 @@ export default class RunningLogPlugin extends Plugin {
 
     this.registerMarkdownCodeBlockProcessor(
       "running-log",
-      createCodeBlockProcessor(this.app, this.store, this.settings)
+      createCodeBlockProcessor(this.app, this.store, this.detailStore, this.settings)
     );
 
     this.addSettingTab(
