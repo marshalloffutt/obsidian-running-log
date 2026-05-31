@@ -9920,7 +9920,7 @@ var KNOWN_KEYS = {
   "pace-trend": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "last", "metric", "smoothing", "mindistance", "trendline"]),
   "heatmap": /* @__PURE__ */ new Set(["type", "title", "unit", "year", "last", "metric", "levels"]),
   "streak": /* @__PURE__ */ new Set(["type", "title", "unit", "min", "showlongest"]),
-  "gallery": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "last", "month", "sort", "metric", "columns"]),
+  "gallery": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "last", "month", "sort"]),
   "run-detail": /* @__PURE__ */ new Set(["type", "title", "unit", "date", "nth", "id", "latest", "panels", "smoothing"]),
   "summary": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "month"])
 };

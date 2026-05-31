@@ -1,6 +1,6 @@
 # Obsidian Running Log
 
-A running-focused Obsidian plugin. Your runs sync in automatically and render as rich visualizations inline in your notes — weekly/monthly mileage, pace trends, a contribution-style heatmap, streaks, a run gallery, and full per-run detail with splits, heart-rate and pace curves, and route maps.
+A running-focused Obsidian plugin. Your runs and walks sync in automatically and render as rich visualizations inline in your notes — a monthly summary, an activity log, weekly/monthly mileage, pace trends, a contribution-style heatmap, streaks, and full per-run detail with splits, heart-rate and pace curves, and route maps.
 
 Not a generic health dashboard. Opinionated for runners.
 
@@ -12,38 +12,45 @@ If you track runs with an Apple Watch and think in Obsidian, your training and y
 
 ## How it works
 
-Running Log reads `.fit` workout files from a folder in your vault and indexes them. The frictionless way to fill that folder is RunGap's automatic export:
+Running Log reads `.fit` workout files from a folder in your vault and indexes them. Both runs and walks are imported. The frictionless way to fill that folder is RunGap's automatic export:
 
 1. **Apple Watch → Apple Health** — happens automatically.
-2. **RunGap** (iOS, paid upgrade) — connect Apple Health, and set up **Auto Sharing** to export each new run as a **FIT** file to a cloud folder (Dropbox or iCloud Drive). Turn off "Ask before sharing" and enable Background Refresh so it runs unattended.
+2. **RunGap** (iOS, paid upgrade) — connect Apple Health, and set up **Auto Sharing** to export each new activity as a **FIT** file to a cloud folder (Dropbox or iCloud Drive). Turn off "Ask before sharing" and enable Background Refresh so it runs unattended.
 3. **Cloud sync → vault** — sync that cloud folder down to `<vault>/running-log/inbox/` on your computer.
-4. **Running Log** watches that folder and imports new runs automatically.
+4. **Running Log** watches that folder and imports new activities automatically. Processed files move to `inbox/processed/`.
 
 Then drop a code block into any note:
 
 ````markdown
 ```running-log
-type: gallery
-last: 24
+type: summary
 ```
 ````
 
-The plugin keeps a small `index.json` of run summaries (so charts and the gallery are instant) plus one detail file per run (loaded only when you open a run's detail view).
+The plugin keeps a small `index.json` of activity summaries (so charts and the log are instant) plus one detail file per activity (loaded only when you open its detail view).
 
 ## Visualizations
 
-All render as `running-log` code blocks.
+All render as `running-log` code blocks. Every block accepts an optional `title:` to set its heading, or `title: ""` to hide it. Each view has a sensible default title.
 
-### Run gallery
+### Monthly summary
 
-A grid of run cards — date, distance, time, pace, intensity.
+Three at-a-glance totals — total distance, run distance, and walk distance. Defaults to the current month; pass `month: 2026-05` for a specific one, or `from:`/`to:` for a custom range.
+
+````markdown
+```running-log
+type: summary
+```
+````
+
+### Activity log
+
+A clean data list — one row per activity, with date, type (Run/Walk), distance, time, pace, and average heart rate. Walk rows are subtly shaded. Defaults to the current month; pass `month: 2026-05`, a `last: N` count, or a `from:`/`to:` range.
 
 ````markdown
 ```running-log
 type: gallery
-last: 24
 sort: date
-metric: pace
 ```
 ````
 
@@ -120,11 +127,12 @@ unit: day
 
 ## Syntax reference
 
-Common keys (all types): `type` (required), `title`, `unit`, `from`/`to`, `last`.
+Common keys (all types): `type` (required), `title` (set a heading, or `""` to hide), `unit`.
 
 | type | key params |
 |---|---|
-| `gallery` | `last`, `sort` (date/distance/pace/duration), `metric`, `columns`, `map` |
+| `summary` | `month` (`YYYY-MM`) or `from`/`to`; defaults to current month |
+| `gallery` | `month` (`YYYY-MM`), `last` (count), or `from`/`to`; `sort` (date/distance/pace/duration); defaults to current month |
 | `run-detail` | `date`, `nth`, `id`, `latest`, `panels`, `smoothing` |
 | `weekly-mileage` / `monthly-mileage` | `last`, `goal`, `showRunCount` |
 | `pace-trend` | `last` (days), `metric` (pace/speed), `smoothing`, `minDistance`, `trendline` |
@@ -143,7 +151,7 @@ Everything stays on your machine. The plugin reads `.fit` files from a vault fol
 
 ## Roadmap
 
-**v2 (current target):** automatic FIT import, run gallery, per-run detail (splits, HR/pace curves, route map), mileage/pace/heatmap/streak charts, settings.
+**v2 (current target):** automatic FIT import of runs and walks, monthly summary, activity log, per-run detail (splits, HR/pace curves, route map), mileage/pace/heatmap/streak charts, settings.
 
 **v2.1:** aerobic-efficiency analysis (HR vs pace), gallery route thumbnails, card deep-links.
 
