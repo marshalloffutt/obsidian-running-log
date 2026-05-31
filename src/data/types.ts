@@ -27,6 +27,7 @@ export interface RunSummary {
   energyKcal?: number;
   source?: string;
   indoor?: boolean;
+  activityType?: "run" | "walk"; // omitted = run for v1 compat
   hasRoute: boolean;
   hasSeries: boolean;
   hasLaps: boolean;

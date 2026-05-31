@@ -67,6 +67,35 @@
   padding-bottom: 0.3em;
 }
 
+/* ─── Summary ─────────────────────────────────────────────────────────────── */
+
+.running-log-summary {
+  display: flex;
+  gap: 2.5em;
+  padding: 0.25em 0 0.75em;
+}
+
+.running-log-summary-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+}
+
+.running-log-summary-value {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: var(--text-normal);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.running-log-summary-label {
+  font-size: 0.7em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
 /* ─── Gallery ─────────────────────────────────────────────────────────────── */
 
 .running-log-gallery-title {
@@ -76,60 +105,70 @@
   color: var(--text-muted);
 }
 
-.running-log-gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 0.6em;
-  padding: 0.25em 0;
+.running-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  /* Override any Obsidian base table styles */
+  border: none;
+  background: none;
 }
 
-.running-log-card {
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  padding: 0.6em 0.75em 0.5em;
-  overflow: hidden;
-  position: relative;
+.running-log-table thead tr {
+  border: none;
+  background: none;
 }
 
-.running-log-card-date {
-  font-size: 0.72em;
-  color: var(--text-muted);
-  margin-bottom: 0.4em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.running-log-card-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15em;
-}
-
-.running-log-card-primary {
-  font-size: 1.15em;
-  font-weight: 700;
-  color: var(--text-normal);
-}
-
-.running-log-card-secondary {
-  font-size: 0.82em;
-  color: var(--text-muted);
-}
-
-.running-log-card-meta {
+.running-log-table th {
+  text-align: left !important;
+  font-weight: 500;
   font-size: 0.75em;
   color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 0 1.2em 0.6em 0 !important;
+  border: none;
+  background: none;
 }
 
-.running-log-card-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  border-radius: 0 0 6px 6px;
+.running-log-th-num {
+  text-align: right !important;
+}
+
+.running-log-table tbody tr {
+  border: none;
+  background: none;
+}
+
+.running-log-table tbody tr + tr td {
+  border-top: 1px solid var(--background-modifier-border-hover);
+}
+
+.running-log-table td {
+  padding: 0.6em 1.2em 0.6em 0 !important;
+  border: none !important;
+  background: none !important;
+  color: var(--text-normal);
+  vertical-align: middle;
+}
+
+.running-log-tr-walk td {
+  background: var(--background-secondary) !important;
+}
+
+.running-log-td-date {
+  white-space: nowrap;
+}
+
+.running-log-td-type {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.running-log-td-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* ─── Run detail ──────────────────────────────────────────────────────────── */

@@ -11,6 +11,7 @@ import { renderHeatmap } from "./charts/heatmap";
 import { renderStreak } from "./charts/streak";
 import { renderGallery } from "./views/gallery";
 import { renderRunDetail } from "./views/runDetail";
+import { renderSummary } from "./views/summary";
 
 class RunningLogBlock extends MarkdownRenderChild {
   private charts: Chart[] = [];
@@ -89,6 +90,11 @@ class RunningLogBlock extends MarkdownRenderChild {
     if (type === "pace-trend") {
       const chart = renderLineChart(this.containerEl, config, runs, this.settings, palette);
       if (chart) this.charts.push(chart);
+      return;
+    }
+
+    if (type === "summary") {
+      renderSummary(this.containerEl, config, runs, this.settings);
       return;
     }
 

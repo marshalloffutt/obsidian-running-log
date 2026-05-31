@@ -21,8 +21,9 @@ export async function parseFitBuffer(
   const fit = await parser.parseAsync(fitBuffer);
 
   const sessions: any[] = (fit as any).sessions ?? [];
-  const session = sessions.find((s: any) => s.sport === "running");
+  const session = sessions.find((s: any) => s.sport === "running" || s.sport === "walking");
   if (!session) return null;
+  const activityType: "run" | "walk" = session.sport === "walking" ? "walk" : "run";
 
   // Runtime delivers Date objects despite TS types saying string
   const startDate = session.start_time as unknown as Date;
@@ -77,7 +78,8 @@ export async function parseFitBuffer(
     elevationGainMeters: session.total_ascent,
     energyKcal: session.total_calories,
     source,
-    indoor: session.sub_sport === "indoor_running" || route.length === 0,
+    indoor: ["indoor_running", "indoor_walking"].includes(session.sub_sport ?? "") || route.length === 0,
+    activityType,
     hasRoute: route.length > 0,
     hasSeries: samples.length > 0,
     hasLaps: laps.length > 0,

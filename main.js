@@ -9673,15 +9673,16 @@ var import_zlib = require("zlib");
 var import_crypto = require("crypto");
 var SPLIT_DISTANCE_M = 1e3;
 async function parseFitBuffer(buffer, options = { routeMaxPoints: 500 }) {
-  var _a, _b, _c, _d, _e;
+  var _a, _b, _c, _d, _e, _f;
   const isGzip = buffer[0] === 31 && buffer[1] === 139;
   const fitBuffer = isGzip ? (0, import_zlib.gunzipSync)(buffer) : buffer;
   const parser = new FitParser({ force: true, speedUnit: "m/s", lengthUnit: "m", mode: "list" });
   const fit = await parser.parseAsync(fitBuffer);
   const sessions = (_a = fit.sessions) != null ? _a : [];
-  const session = sessions.find((s) => s.sport === "running");
+  const session = sessions.find((s) => s.sport === "running" || s.sport === "walking");
   if (!session)
     return null;
+  const activityType = session.sport === "walking" ? "walk" : "run";
   const startDate = session.start_time;
   const endDate = session.timestamp;
   const startMs = startDate.getTime();
@@ -9733,7 +9734,8 @@ async function parseFitBuffer(buffer, options = { routeMaxPoints: 500 }) {
     elevationGainMeters: session.total_ascent,
     energyKcal: session.total_calories,
     source,
-    indoor: session.sub_sport === "indoor_running" || route.length === 0,
+    indoor: ["indoor_running", "indoor_walking"].includes((_f = session.sub_sport) != null ? _f : "") || route.length === 0,
+    activityType,
     hasRoute: route.length > 0,
     hasSeries: samples.length > 0,
     hasLaps: laps.length > 0
@@ -9909,7 +9911,8 @@ var VALID_TYPES = [
   "heatmap",
   "streak",
   "gallery",
-  "run-detail"
+  "run-detail",
+  "summary"
 ];
 var KNOWN_KEYS = {
   "weekly-mileage": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "last", "goal", "showruncount"]),
@@ -9917,8 +9920,9 @@ var KNOWN_KEYS = {
   "pace-trend": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "last", "metric", "smoothing", "mindistance", "trendline"]),
   "heatmap": /* @__PURE__ */ new Set(["type", "title", "unit", "year", "last", "metric", "levels"]),
   "streak": /* @__PURE__ */ new Set(["type", "title", "unit", "min", "showlongest"]),
-  "gallery": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "last", "sort", "metric", "columns"]),
-  "run-detail": /* @__PURE__ */ new Set(["type", "title", "unit", "date", "nth", "id", "latest", "panels", "smoothing"])
+  "gallery": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "last", "month", "sort", "metric", "columns"]),
+  "run-detail": /* @__PURE__ */ new Set(["type", "title", "unit", "date", "nth", "id", "latest", "panels", "smoothing"]),
+  "summary": /* @__PURE__ */ new Set(["type", "title", "unit", "from", "to", "month"])
 };
 function parseBlockSource(source) {
   const config = {};
@@ -22183,11 +22187,11 @@ function renderStreak(el, config, runs, settings) {
 
 // src/render/views/gallery.ts
 var MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-function formatCardDate(isoWithOffset) {
+var DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function formatRowDate(isoWithOffset) {
   const [y, m, d] = localDateStr(isoWithOffset).split("-").map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
-  const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getUTCDay()];
-  return `${dow} ${MONTH_NAMES[m - 1]} ${d}, ${y}`;
+  return `${DOW[date.getUTCDay()]} ${MONTH_NAMES[m - 1]} ${d}`;
 }
 function formatPace(distanceMeters, durationSeconds, unit) {
   const dist = metersToUnit(distanceMeters, unit);
@@ -22198,45 +22202,37 @@ function formatPace(distanceMeters, durationSeconds, unit) {
   const s = String(Math.floor(spu % 60)).padStart(2, "0");
   return `${m}:${s} /${unit}`;
 }
-function accentIntensity(run, metric, allRuns, unit) {
-  var _a;
-  const metersPerUnit = unit === "mi" ? METERS_PER_MILE : METERS_PER_KM;
-  const extractors = {
-    pace: (r) => r.distanceMeters > 0 ? r.durationSeconds / (r.distanceMeters / metersPerUnit) : void 0,
-    distance: (r) => r.distanceMeters,
-    hr: (r) => r.avgHeartRate
-  };
-  const extract = (_a = extractors[metric]) != null ? _a : extractors.pace;
-  const values = allRuns.map(extract).filter((v) => v !== void 0);
-  if (values.length === 0)
-    return 0.5;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  if (max === min)
-    return 0.5;
-  const val = extract(run);
-  if (val === void 0)
-    return 0.3;
-  const normalized = (val - min) / (max - min);
-  return metric === "pace" ? 1 - normalized : normalized;
+function currentYearMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
-function renderGallery(container, config, allRuns, settings, palette) {
-  var _a, _b, _c;
+function monthLabel(ym) {
+  const [y, m] = ym.split("-").map(Number);
+  return `${MONTH_NAMES[m - 1]} ${y}`;
+}
+function renderGallery(container, config, allRuns, settings, _palette) {
+  var _a, _b;
   const unit = (_a = config["unit"]) != null ? _a : settings.displayUnit;
-  const last = typeof config["last"] === "number" ? config["last"] : 30;
+  const last = typeof config["last"] === "number" ? config["last"] : null;
+  const month = config["month"];
   const sort = (_b = config["sort"]) != null ? _b : "date";
-  const metric = (_c = config["metric"]) != null ? _c : "pace";
-  const columns = typeof config["columns"] === "number" ? config["columns"] : void 0;
   const fromDate = config["from"];
   const toDate = config["to"];
   let runs = [...allRuns];
+  let autoTitle;
   if (fromDate || toDate) {
     runs = runs.filter((r) => {
       const d = localDateStr(r.startTime);
       return (!fromDate || d >= fromDate) && (!toDate || d <= toDate);
     });
-  } else {
+    autoTitle = [fromDate, toDate].filter(Boolean).join(" \u2013 ");
+  } else if (last !== null) {
     runs = runs.slice(-last);
+    autoTitle = `Last ${last} activities`;
+  } else {
+    const ym = month != null ? month : currentYearMonth();
+    runs = runs.filter((r) => localDateStr(r.startTime).startsWith(ym));
+    autoTitle = monthLabel(ym);
   }
   const metersPerUnit = unit === "mi" ? METERS_PER_MILE : METERS_PER_KM;
   runs.sort((a, b) => {
@@ -22252,49 +22248,40 @@ function renderGallery(container, config, allRuns, settings, palette) {
     return b.startTime.localeCompare(a.startTime);
   });
   if (runs.length === 0) {
-    container.createEl("p", { cls: "running-log-empty", text: "No runs in this range." });
+    container.createEl("p", { cls: "running-log-empty", text: "No activities in this range." });
     return;
   }
   const title = config["title"];
-  if (title !== "") {
-    const heading = title != null ? title : `Last ${runs.length} runs`;
-    container.createEl("h4", { cls: "running-log-gallery-title", text: heading });
+  if (title) {
+    container.createEl("h4", { cls: "running-log-gallery-title", text: title });
   }
-  const grid = container.createEl("div", { cls: "running-log-gallery" });
-  if (columns) {
-    grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
-  }
+  const showHr = runs.some((r) => r.avgHeartRate != null);
+  const table = container.createEl("table", { cls: "running-log-table" });
+  const thead = table.createEl("thead");
+  const headerRow = thead.createEl("tr");
+  headerRow.createEl("th", { text: "Date" });
+  headerRow.createEl("th", { text: "Type" });
+  headerRow.createEl("th", { text: `Distance (${unit})`, cls: "running-log-th-num" });
+  headerRow.createEl("th", { text: "Time", cls: "running-log-th-num" });
+  headerRow.createEl("th", { text: "Pace", cls: "running-log-th-num" });
+  if (showHr)
+    headerRow.createEl("th", { text: "Avg HR", cls: "running-log-th-num" });
+  const tbody = table.createEl("tbody");
   for (const run of runs) {
-    const card = grid.createEl("div", { cls: "running-log-card" });
-    card.createEl("div", {
-      cls: "running-log-card-date",
-      text: formatCardDate(run.startTime)
-    });
-    const stats = card.createEl("div", { cls: "running-log-card-stats" });
+    const isWalk = run.activityType === "walk";
+    const tr = tbody.createEl("tr", { cls: isWalk ? "running-log-tr running-log-tr-walk" : "running-log-tr" });
+    tr.createEl("td", { text: formatRowDate(run.startTime), cls: "running-log-td-date" });
+    tr.createEl("td", { text: isWalk ? "Walk" : "Run", cls: "running-log-td-type" });
     const dist = metersToUnit(run.distanceMeters, unit);
-    stats.createEl("span", {
-      cls: "running-log-card-primary",
-      text: `${dist.toFixed(2)} ${unit}`
-    });
-    stats.createEl("span", {
-      cls: "running-log-card-secondary",
-      text: secondsToHMS(run.durationSeconds)
-    });
-    stats.createEl("span", {
-      cls: "running-log-card-secondary",
-      text: formatPace(run.distanceMeters, run.durationSeconds, unit)
-    });
-    if (run.avgHeartRate) {
-      stats.createEl("span", {
-        cls: "running-log-card-meta",
-        text: `${run.avgHeartRate} bpm`
+    tr.createEl("td", { text: dist.toFixed(2), cls: "running-log-td-num" });
+    tr.createEl("td", { text: secondsToHMS(run.durationSeconds), cls: "running-log-td-num" });
+    tr.createEl("td", { text: formatPace(run.distanceMeters, run.durationSeconds, unit), cls: "running-log-td-num" });
+    if (showHr) {
+      tr.createEl("td", {
+        text: run.avgHeartRate ? `${run.avgHeartRate}` : "\u2014",
+        cls: "running-log-td-num"
       });
     }
-    const intensity = accentIntensity(run, metric, runs, unit);
-    const bar = card.createEl("div", { cls: "running-log-card-bar" });
-    bar.style.setProperty("--bar-intensity", String(intensity));
-    bar.style.background = palette.accent;
-    bar.style.opacity = String(0.25 + intensity * 0.75);
   }
 }
 
@@ -22662,6 +22649,55 @@ async function renderRunDetail(container, config, runs, detailStore, settings, p
   return charts;
 }
 
+// src/render/views/summary.ts
+var MONTH_NAMES3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function currentYearMonth2() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+function monthLabel2(ym) {
+  const [y, m] = ym.split("-").map(Number);
+  return `${MONTH_NAMES3[m - 1]} ${y}`;
+}
+function renderSummary(container, config, allRuns, settings) {
+  var _a;
+  const unit = (_a = config["unit"]) != null ? _a : settings.displayUnit;
+  const fromDate = config["from"];
+  const toDate = config["to"];
+  const month = config["month"];
+  let runs = [...allRuns];
+  let autoTitle;
+  if (fromDate || toDate) {
+    runs = runs.filter((r) => {
+      const d = localDateStr(r.startTime);
+      return (!fromDate || d >= fromDate) && (!toDate || d <= toDate);
+    });
+    autoTitle = [fromDate, toDate].filter(Boolean).join(" \u2013 ");
+  } else {
+    const ym = month != null ? month : currentYearMonth2();
+    runs = runs.filter((r) => localDateStr(r.startTime).startsWith(ym));
+    autoTitle = monthLabel2(ym);
+  }
+  const title = config["title"];
+  if (title !== "") {
+    container.createEl("h4", { cls: "running-log-gallery-title", text: title != null ? title : autoTitle });
+  }
+  const runDist = runs.filter((r) => r.activityType !== "walk").reduce((sum, r) => sum + r.distanceMeters, 0);
+  const walkDist = runs.filter((r) => r.activityType === "walk").reduce((sum, r) => sum + r.distanceMeters, 0);
+  const totalDist = runDist + walkDist;
+  const stats = [
+    { label: "Total Distance", value: `${metersToUnit(totalDist, unit).toFixed(1)} ${unit}` },
+    { label: "Run", value: `${metersToUnit(runDist, unit).toFixed(1)} ${unit}` },
+    { label: "Walk", value: `${metersToUnit(walkDist, unit).toFixed(1)} ${unit}` }
+  ];
+  const row = container.createEl("div", { cls: "running-log-summary" });
+  for (const stat of stats) {
+    const block = row.createEl("div", { cls: "running-log-summary-stat" });
+    block.createEl("div", { cls: "running-log-summary-value", text: stat.value });
+    block.createEl("div", { cls: "running-log-summary-label", text: stat.label });
+  }
+}
+
 // src/render/codeBlockProcessor.ts
 var RunningLogBlock = class extends import_obsidian4.MarkdownRenderChild {
   constructor(app, containerEl, source, store, detailStore, settings) {
@@ -22728,6 +22764,10 @@ var RunningLogBlock = class extends import_obsidian4.MarkdownRenderChild {
       const chart = renderLineChart(this.containerEl, config, runs, this.settings, palette);
       if (chart)
         this.charts.push(chart);
+      return;
+    }
+    if (type === "summary") {
+      renderSummary(this.containerEl, config, runs, this.settings);
       return;
     }
     if (type === "gallery") {
