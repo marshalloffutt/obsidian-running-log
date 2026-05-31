@@ -25,6 +25,11 @@ export function renderStreak(
 
   const periodLabel = streakUnit === "week" ? "week streak" : "day streak";
 
+  const title = config["title"] as string | undefined;
+  if (title !== "") {
+    el.createEl("h4", { cls: "running-log-gallery-title", text: title ?? "Streak" });
+  }
+
   const card = el.createDiv({ cls: "running-log-streak" });
 
   const current = card.createDiv({ cls: "running-log-stat" });

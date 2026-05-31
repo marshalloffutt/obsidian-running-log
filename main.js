@@ -21892,6 +21892,10 @@ function renderBarChart(el, config, runs, settings, palette) {
       ctx.restore();
     }
   };
+  const title = config["title"];
+  if (title !== "") {
+    el.createEl("h4", { cls: "running-log-gallery-title", text: title != null ? title : isWeekly ? "Weekly Mileage" : "Monthly Mileage" });
+  }
   const container = el.createDiv({ cls: "running-log-chart-container" });
   const canvas = container.createEl("canvas");
   const chartConfig = {
@@ -22014,6 +22018,10 @@ function renderLineChart(el, config, runs, settings, palette) {
   }
   const yTickCallback = isPace ? (v) => fmtPace(v) : void 0;
   const tooltipLabel = isPace ? (ctx) => `${fmtPace(ctx.raw)} /${unit} \xB7 ${labels[ctx.dataIndex]}` : (ctx) => `${ctx.raw.toFixed(1)} ${unit}/hr \xB7 ${labels[ctx.dataIndex]}`;
+  const title = config["title"];
+  if (title !== "") {
+    el.createEl("h4", { cls: "running-log-gallery-title", text: title != null ? title : "Pace Trend" });
+  }
   const container = el.createDiv({ cls: "running-log-chart-container" });
   const canvas = container.createEl("canvas");
   const chartConfig = {
@@ -22132,9 +22140,9 @@ function renderHeatmap(el, config, runs, settings, palette) {
       rect.setAttribute("fill-opacity", String(dayData.intensity));
       const dist = dayData.distance.toFixed(1);
       const runs2 = dayData.runCount;
-      const title = svgEl("title");
-      title.textContent = `${dateStr}: ${dist} ${unit} (${runs2} run${runs2 !== 1 ? "s" : ""})`;
-      rect.appendChild(title);
+      const title2 = svgEl("title");
+      title2.textContent = `${dateStr}: ${dist} ${unit} (${runs2} run${runs2 !== 1 ? "s" : ""})`;
+      rect.appendChild(title2);
     } else {
       rect.setAttribute("fill", palette.bgSecondary);
     }
@@ -22148,6 +22156,10 @@ function renderHeatmap(el, config, runs, settings, palette) {
     text.setAttribute("fill", palette.textMuted);
     text.textContent = label;
     svg.appendChild(text);
+  }
+  const title = config["title"];
+  if (title !== "") {
+    el.createEl("h4", { cls: "running-log-gallery-title", text: title != null ? title : "Activity Heatmap" });
   }
   const container = el.createDiv({ cls: "running-log-heatmap-container" });
   container.appendChild(svg);
@@ -22168,6 +22180,10 @@ function renderStreak(el, config, runs, settings) {
     minDistanceMeters: minMeters
   });
   const periodLabel = streakUnit === "week" ? "week streak" : "day streak";
+  const title = config["title"];
+  if (title !== "") {
+    el.createEl("h4", { cls: "running-log-gallery-title", text: title != null ? title : "Streak" });
+  }
   const card = el.createDiv({ cls: "running-log-streak" });
   const current = card.createDiv({ cls: "running-log-stat" });
   current.createEl("span", { cls: "running-log-stat-value", text: String(summary.currentStreak) });

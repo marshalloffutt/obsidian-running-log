@@ -72,6 +72,11 @@ export function renderBarChart(
     },
   };
 
+  const title = config["title"] as string | undefined;
+  if (title !== "") {
+    el.createEl("h4", { cls: "running-log-gallery-title", text: title ?? (isWeekly ? "Weekly Mileage" : "Monthly Mileage") });
+  }
+
   const container = el.createDiv({ cls: "running-log-chart-container" });
   const canvas = container.createEl("canvas");
 
