@@ -129,6 +129,11 @@ export function renderHeatmap(
     svg.appendChild(text);
   }
 
+  const title = config["title"] as string | undefined;
+  if (title !== "") {
+    el.createEl("h4", { cls: "running-log-gallery-title", text: title ?? "Activity Heatmap" });
+  }
+
   const container = el.createDiv({ cls: "running-log-heatmap-container" });
   container.appendChild(svg);
 }

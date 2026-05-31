@@ -105,6 +105,11 @@ export function renderLineChart(
     : (ctx: { raw: unknown; dataIndex: number }) =>
         `${(ctx.raw as number).toFixed(1)} ${unit}/hr · ${labels[ctx.dataIndex]}`;
 
+  const title = config["title"] as string | undefined;
+  if (title !== "") {
+    el.createEl("h4", { cls: "running-log-gallery-title", text: title ?? "Pace Trend" });
+  }
+
   const container = el.createDiv({ cls: "running-log-chart-container" });
   const canvas = container.createEl("canvas");
 
